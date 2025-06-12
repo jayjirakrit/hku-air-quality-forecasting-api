@@ -1,0 +1,77 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+.env
+.idea/                          # PyCharm / IntelliJ IDE files
+*.egg-info/
+.eggs/
+dist/
+build/
+*.so
+*.manifest
+*.spec
+
+# MyPy
+.mypy_cache/
+
+# pytest
+.pytest_cache/
+.coverage
+
+# Ruff
+.ruff_cache/
+
+# Pipenv
+# Pipfile.lock                 # Uncomment if you manage dependencies solely via requirements.txt
+                               # and don't want to commit Pipfile.lock for reproducibility
+
+# Poetry
+# poetry.lock                  # Uncomment if you manage dependencies solely via requirements.txt
+                               # and don't want to commit poetry.lock for reproducibility
+
+# Jupyter Notebook (if used for development/testing)
+.ipynb_checkpoints/
+
+# Logs
+*.log
+*.logs
+
+# SQLite (if used)
+*.sqlite3
+db.sqlite3
+
+# OS generated files
+.DS_Store                   # macOS
+.Trashes                    # macOS
+ehthumbs.db                 # Windows
+Thumbs.db                   # Windows
+*.bak                       # Backup files
+
+# VS Code
+.vscode/                    # VS Code settings. Keep only if necessary for shared project settings.
+                            # Usually, settings.json contains user-specific preferences,
+                            # but sometimes workspace settings are useful to share.
+                            # If you want to keep specific shared settings, you might do:
+                            # !.vscode/settings.json
+                            # .vscode/*
+                            # !.vscode/extensions.json (if you want to recommend extensions)
+
+# Sensitive data / credentials
+*.env
+.env.local
+.env.*.local
+credentials.json
+secrets.json
+*.key
+*.pem
+*.p12
+
+# Runtime data (e.g., user uploads, if stored locally)
+/media/
+/upload/
