@@ -1,0 +1,6 @@
+runtime: python39 # Or appropriate Python version
+env: standard
+entrypoint: uvicorn your_app:app --host 0.0.0.0 --port 8000 --workers 4 --timeout-keep-alive 60 # Adjust workers as needed
+handlers:
+- url: /.*
+  script: auto
