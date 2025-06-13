@@ -1,6 +1,10 @@
-runtime: python39 # Or appropriate Python version
+runtime: python312 # Or appropriate Python version
+service: api
 env: standard
-entrypoint: uvicorn your_app:app --host 0.0.0.0 --port 8000 --workers 4 --timeout-keep-alive 60 # Adjust workers as needed
+entrypoint: gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app
 handlers:
 - url: /.*
   script: auto
+  secure: always
+vpc_access_connector:
+  name: projects/hku-capstone-project-458309/locations/asia-east2/connectors/hku-vpc-connector-subnet

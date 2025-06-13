@@ -4,3 +4,5 @@ sqlmodel
 psycopg2-binary
 httpx
 python-dotenv
+requests
+gunicorn

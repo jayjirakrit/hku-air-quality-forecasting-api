@@ -36,7 +36,7 @@ def on_startup():
 
 # ----- API Endpoints ----- #
 
-@app.get("/air-quality-forecast/", response_model=List[AirQualityData])
+@app.get("/api/air-quality-forecast/", response_model=List[AirQualityData])
 def get_air_quality_forecast(
     date: datetime = Query(..., description="Date for the forecast (YYYY-MM-DD)"),
     station: str = Query(..., description="Station identifier (e.g., 'station_123')")
@@ -44,7 +44,7 @@ def get_air_quality_forecast(
     return air_quality_service.get_air_quality_forecast(date,station)
      
 # Get real-time air quality (all stations or specific station)
-@app.get("/real-time-air-quality/")
+@app.get("/api/real-time-air-quality/")
 def get_real_time_air_quality( *,
     session: Session = Depends(get_session),
     station: Optional[str] = Query(None, description="Filter by station name (optional)")
@@ -52,12 +52,12 @@ def get_real_time_air_quality( *,
     return air_quality_service.get_real_time_air_quality(session,station)
 
 # Get all stations
-@app.get("/stations/", response_model=List[StationModel])
+@app.get("/api/stations/", response_model=List[StationModel])
 def get_stations( *,
     session: Session = Depends(get_session)):
     return station_service.get_stations(session)
 
 # Get recommendations based on air quality
-@app.post("/recommendations/", response_model=List[Recommendation])
+@app.post("/api/recommendations/", response_model=List[Recommendation])
 def get_recommendation(air_quality: AirQualityData = None):
     return air_quality_service.get_recommendation()
