@@ -6,3 +6,9 @@ httpx
 python-dotenv
 requests
 gunicorn
+numpy
+pandas
+scikit-learn
+matplotlib
+tqdm
+torch

@@ -1,11 +1,13 @@
 from datetime import datetime
 from fastapi import HTTPException
 from model import AirQualityData
-import requests
+import httpx
 import xml.etree.ElementTree as ET
 from service.station_service import StationService 
 from dotenv import load_dotenv
 import os
+from typing import Optional, List, Dict, Any
+from lib.forecasting_model import forecast_pm25
 
 # Load environment variables from .env file
 load_dotenv()
@@ -13,81 +15,90 @@ station_service = StationService()
 
 
 class AirQualityService:
-    def get_air_quality_forecast(self, session, date: datetime, station: str):            
-        # Mock database (replace with real DB/API calls)
-        mock_forecast_data = {
-            "station_123": {
-                "2025-01-01": {
-                    "aqi": 45,
-                    "pm2_5": 12,
-                    "temp": 22.5,
-                    "wind": 10,
-                    "humidity": 65
-                }
-            }
-        }
-        # Convert datetime to date string (YYYY-MM-DD) for lookup
-        date_str = date.strftime("%Y-%m-%d")
-        
-        # Check if station exists
-        if station not in mock_forecast_data:
-            raise HTTPException(status_code=404, detail="Station not found")
-        
-        # Check if forecast exists for the given date
-        station_data = mock_forecast_data[station]
-        if date_str not in station_data:
-            raise HTTPException(status_code=404, detail="Forecast not available for this date")
-        
-        forecast = station_data[date_str]
-        
-        return [{
-            "date": date,
-            "station": station,
-            "aqi": forecast["aqi"],
-            "pm2_5": forecast["pm2_5"],
-            "temp": forecast["temp"],
-            "wind": forecast["wind"],
-            "humidity": forecast["humidity"]
-        }]
+    async def get_air_quality_forecast(self, session):            
+        return forecast_pm25()
     
     # Get real-time air quality (all stations or specific station)
-    def get_real_time_air_quality(self, session, station: str):
+    async def get_real_time_air_quality(self, session, station_filter: Optional[str] = None) -> List[Dict[str, Any]]:
         URL = os.getenv("AQHI_API_URL")
+        if not URL:
+            raise HTTPException(status_code=500, detail="AQHI_API_URL environment variable is not set.")
         try:
-            # Get All Stations
-            stations = station_service.get_stations(session)
-
-            response = requests.get(URL, timeout=5)
-            response.raise_for_status()
-            # Parse the XML response
-            root = ET.fromstring(response.text)
-            items = []
+            all_stations = await station_service.get_stations(session)
             
-            for item in root.findall('.//channel/item'):
-                title = item.find('title').text
-                description = item.find('description').text.strip()
-                pub_date = item.find('pubDate').text
-                # Extract data from title (format: "District : AQHI : Risk Level")
-                parts = title.split(' : ')
-                if len(parts) == 3:
-                    district, aqhi, risk = parts
-                    stationData = next((s for s in stations if s.name.lower() == district.lower()), None)
-                    if (station is None or station.lower() in district.lower()) and stationData is not None:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(URL)
+                response.raise_for_status() # Raise an exception for HTTP errors (4xx or 5xx)
+                root = ET.fromstring(response.text)
+                items = []
+                stations_by_lower_name = {s.name.lower(): s for s in all_stations}
+                
+                for item_elem in root.findall('./channel/item'): # Use a distinct variable name for the element
+                    title_elem = item_elem.find('title')
+                    description_elem = item_elem.find('description')
+                    pub_date_elem = item_elem.find('pubDate')
+
+                    district_name = title_elem.text.strip() if title_elem is not None else ""
+                    description_text = description_elem.text.strip() if description_elem is not None else ""
+                    pub_date = pub_date_elem.text if pub_date_elem is not None else ""
+
+                    aqhi_str = None
+                    risk = None
+
+                    # Find the part after the second colon and before the final dash
+                    parts_after_colon = description_text.split(': ', 1)
+                    if len(parts_after_colon) > 1:
+                        # This gets "2 Low - Wed, 25 Jun 2025 20:30"
+                        aqhi_risk_date_part = parts_after_colon[1].strip()
+                        
+                        # Split by the first " - " to separate AQHI/Risk from date
+                        aqhi_risk_components = aqhi_risk_date_part.split(' - ', 1)
+                        if len(aqhi_risk_components) > 0:
+                            aqhi_risk_str = aqhi_risk_components[0].strip() # This should be "2 Low" or "3 High"
+
+                            # Split "2 Low" into AQHI and Risk
+                            aqhi_and_risk = aqhi_risk_str.split(' ', 1)
+                            if len(aqhi_and_risk) == 2:
+                                aqhi_str = aqhi_and_risk[0].strip()
+                                risk = aqhi_and_risk[1].strip()
+                            elif len(aqhi_and_risk) == 1:
+                                aqhi_str = aqhi_and_risk[0].strip()
+                                risk = "N/A" # Default if risk level is missing
+
+                    if aqhi_str is None or risk is None:
+                        print(f"Warning: Could not parse AQHI/Risk from description '{description_text}' for district '{district_name}'. Skipping this item.")
+                        continue # Skip to the next item
+
+                    station_data = stations_by_lower_name.get(district_name.lower())                    
+                    if (station_filter is None or station_filter.lower() == district_name.lower()) and station_data is not None:
+                        try:
+                            aqi_value = int(aqhi_str)
+                        except ValueError:
+                            print(f"Warning: Could not convert AQHI '{aqhi_str}' to int for district '{district_name}'. Skipping this item.")
+                            continue # Skip this item if AQHI is not a valid integer
+
                         items.append({
-                            'id': stationData.id,
-                            'station': stationData.name,
-                            'latitude': stationData.latitude,
-                            'longitude': stationData.longitude,
-                            'aqi': int(aqhi),
+                            'id': station_data.id,
+                            'station': station_data.name,
+                            'latitude': station_data.latitude,
+                            'longitude': station_data.longitude,
+                            'aqi': aqi_value,
                             'risk_level': risk,
                             'report_datetime': pub_date
                         })
-            return items
+                return items
         
-        except requests.exceptions.RequestException as e:
-            raise HTTPException(status_code=400, detail=f"API call failed: {str(e)}")
+        except httpx.HTTPStatusError as e:
+            raise HTTPException(status_code=e.response.status_code, detail=f"External API HTTP error: {e.response.text}") from e
+        except httpx.RequestError as e:
+            raise HTTPException(status_code=503, detail=f"Network error accessing external API: {str(e)}") from e
         except ET.ParseError as e:
-            raise HTTPException(status_code=500, detail=f"XML parsing failed: {str(e)}") 
+            raise HTTPException(status_code=500, detail=f"Failed to parse XML from external API: {str(e)}") 
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+        # mock_real_time_data = {
+        #     "station_1": {
         # mock_real_time_data = {
         #     "station_1": {
         #         "date": datetime.now(),
