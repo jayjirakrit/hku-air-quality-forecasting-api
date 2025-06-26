@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import os
 from sklearn.preprocessing import StandardScaler
 import torch
 import torch.nn as nn
@@ -7,6 +8,7 @@ from torch.utils.data import Dataset, DataLoader
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from pydantic import BaseModel
+from lib.google_cloud import download_blob_to_file
 
 # Define data model
 class AirQualityData(BaseModel):
@@ -103,8 +105,17 @@ class MultiStationDataset(Dataset):
 
 # Main Forecasting Function
 def forecast_pm25(station_names: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    bucket_name = os.getenv("GBS_BUCKET_NAME")
+    source_file = os.getenv("GBS_SOURCE_FILE")
+    destination_path = os.getenv("IMAGE_DESTINATION_PATH")
+    if not os.path.exists(destination_path):
+        print(f"File {destination_path} not found locally. Downloading from GCS")
+        download_blob_to_file(bucket_name, source_file, destination_path)
+    else:
+        print(f"File {destination_path} already exists. Skipping download.")
+    
     # Load data
-    images = np.load("./lib/images_filled_griddata.npy").astype(np.float32)
+    images = np.load(F"./{destination_path}").astype(np.float32)
     features = [
         "so2", "no", "no2", "rsp", "o3", "fsp", "humidity", "max_temp", 
         "min_temp", "pressure", "wind_direction", "wind_speed", "max_wind_speed", 
@@ -202,10 +213,5 @@ def forecast_pm25(station_names: Optional[List[str]] = None) -> List[Dict[str, A
                     humidity=None
                 ).model_dump()
             )
-            # response_data.append({
-            #     "station": stations.iloc[[s_idx_tensor]]['station'].item(), # Get the actual station name/ID
-            #     "pm2_5": pm2_5_value,
-            #     "hour": hours[hour_idx] # Use the corresponding hour from the 'hours' range
-            # })
     
     return response_data

@@ -12,3 +12,4 @@ scikit-learn
 matplotlib
 tqdm
 torch
+google-cloud-storage
