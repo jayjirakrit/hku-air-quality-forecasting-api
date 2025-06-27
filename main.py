@@ -39,19 +39,63 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+class MockSession:
+    """
+    A mock database session class that supports context management
+    and provides dummy methods for common session operations.
+    """
+    def __enter__(self):
+        print("Mock Session opened.")
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass # No actual resources to release in a mock
+
+    def close(self):
+        pass # No actual resources to release in a mock
+
+    # Add any other methods your real Session object might have, empty commit/rollback etc.
+    def add(self, obj):
+        print(f"Mock Session: Added object {obj}")
+        pass
+    def commit(self):
+        print("Mock Session: Committed changes.")
+        pass
+    def rollback(self):
+        print("Mock Session: Rolled back changes.")
+        pass
+    def refresh(self, obj):
+        print(f"Mock Session: Refreshed object {obj}")
+        pass
+
+def get_session_mock():
+    session = MockSession()
+    try:
+        yield session
+    finally:
+        # In a real SQLAlchemy setup, this would be session.close()
+        session.close()
+    
 # ------ Database Setup ------ #
 
 @app.on_event("startup")
-def on_startup():
-    create_db_and_tables()
+async def on_startup():
+    try:
+        with MockSession() as session:
+            print("Startup: Fetching initial air quality data...")
+            response_data = await air_quality_service.get_air_quality_forecast(session)
+            in_memory_cache.set("real-time-air-quality", response_data)
+            print("Startup: Cache preloaded successfully!")
+    except Exception as e:
+        print(f"Startup ERROR: Failed to preload cache: {e}")
 
 # ----- API Endpoints ----- #
 
 # Get all stations
-@app.get("/api/stations/", response_model=List[StationModel])
+@app.get("/api/stations/")
 async def get_stations( *,
     session: Session = Depends(get_session)):
-    return station_service.get_stations(session)
+    return await station_service.get_stations(session)
      
 # Get real-time air quality (all stations or specific station)
 @app.get("/api/real-time-air-quality/")
@@ -61,12 +105,7 @@ async def get_real_time_air_quality( *,
 ):
     return await air_quality_service.get_real_time_air_quality(session,station)
 
-@app.get("/api/air-quality-forecast/", response_model= List[Dict[str, Any]])
-# def get_air_quality_forecast(*,
-#     session: Session = Depends(get_session),
-#     date: datetime = Query(None, description="Date for the forecast (YYYY-MM-DD)"),
-#     station: str = Query(None, description="Station identifier (e.g., 'station_123')")
-# ):    
+@app.post("/api/forecast-air-quality/", response_model= List[Dict[str, Any]])
 async def get_air_quality_forecast(*,
     session: Session = Depends(get_session)
 ):

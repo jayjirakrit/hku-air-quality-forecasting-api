@@ -15,6 +15,8 @@ station_service = StationService()
 
 
 class AirQualityService:
+    
+    # Get forecasting air quality (all stations)
     async def get_air_quality_forecast(self, session):            
         return forecast_pm25()
     
@@ -96,30 +98,6 @@ class AirQualityService:
             raise HTTPException(status_code=500, detail=f"Failed to parse XML from external API: {str(e)}") 
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
-
-        # mock_real_time_data = {
-        #     "station_1": {
-        # mock_real_time_data = {
-        #     "station_1": {
-        #         "date": datetime.now(),
-        #         "station": "central",
-        #         "aqi": 65,
-        #         "pm2_5": 25,
-        #         "temp": 28.3,
-        #         "wind": 12,
-        #         "humidity": 60,
-        #     },
-        #     "station_2": {
-        #         "date": datetime.now(),
-        #         "station": "central",
-        #         "aqi": 42,
-        #         "pm2_5": 15,
-        #         "temp": 22.1,
-        #         "wind": 8,
-        #         "humidity": 55,
-        #     },
-        # }
-        # return [mock_real_time_data[station]]
     
     def get_recommendation(self, session, air_quality: AirQualityData = None):
         mock_recommendations = [

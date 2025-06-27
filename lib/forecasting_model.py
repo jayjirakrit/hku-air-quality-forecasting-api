@@ -13,7 +13,7 @@ from lib.google_cloud import download_blob_to_file
 # Define data model
 class AirQualityData(BaseModel):
     date: Optional[datetime] = None
-    time: Optional[int] = None
+    time: Optional[str] = None
     station: Optional[str] = None
     aqi: Optional[int] = None
     pm2_5: float = None
@@ -191,8 +191,6 @@ def forecast_pm25(station_names: Optional[List[str]] = None) -> List[Dict[str, A
     response_data = []
     # 5) For each station, find a sample in this batch and plot
     for s_idx_tensor in range(17): # Iterate through possible station indices (0-16)
-        # find index in batch corresponding to station s_idx_tensor
-        # Using .item() to get the scalar value from a 0-d array returned by nonzero()
         idxs = (station_idx.cpu().numpy() == s_idx_tensor).nonzero()
         if len(idxs[0]) == 0: # Check if there are any samples for this station in the batch
             continue
@@ -204,9 +202,9 @@ def forecast_pm25(station_names: Optional[List[str]] = None) -> List[Dict[str, A
             response_data.append(
                 AirQualityData(
                     date=None,
-                    time=hours[hour_idx],
+                    time=f"{hours[hour_idx]:02d}:00",
                     station=station_name,
-                    pm2_5=float(pm2_5_value),
+                    pm2_5=round(float(pm2_5_value)),
                     aqi=None,
                     temp=None,
                     wind=None,

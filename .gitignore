@@ -75,3 +75,4 @@ secrets.json
 # Runtime data (e.g., user uploads, if stored locally)
 /media/
 /upload/
+images_filled_griddata.npy
