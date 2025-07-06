@@ -106,7 +106,7 @@ async def get_real_time_air_quality( *,
     return await air_quality_service.get_real_time_air_quality(session,station)
 
 # Get real-time analysis air quality (all stations or specific station)
-@app.get("/api/real-time-analysis-air-quality/")
+@app.get("/api/real-time-analysis-aq/")
 async def get_real_time_air_quality( *,
     session: Session = Depends(get_session),
     station: Optional[str] = Query(None, description="Filter by station name (optional)")
