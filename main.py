@@ -78,16 +78,16 @@ def get_session_mock():
     
 # ------ Database Setup ------ #
 
-@app.on_event("startup")
-async def on_startup():
-    try:
-        with MockSession() as session:
-            print("Startup: Fetching initial air quality data...")
-            response_data = await air_quality_service.get_air_quality_forecast(session)
-            in_memory_cache.set("real-time-air-quality", response_data)
-            print("Startup: Cache preloaded successfully!")
-    except Exception as e:
-        print(f"Startup ERROR: Failed to preload cache: {e}")
+# @app.on_event("startup")
+# async def on_startup():
+#     try:
+#         with MockSession() as session:
+#             print("Startup: Fetching initial air quality data...")
+#             response_data = await air_quality_service.get_air_quality_forecast(session)
+#             in_memory_cache.set("real-time-air-quality", response_data)
+#             print("Startup: Cache preloaded successfully!")
+#     except Exception as e:
+#         print(f"Startup ERROR: Failed to preload cache: {e}")
 
 # ----- API Endpoints ----- #
 
@@ -106,10 +106,9 @@ async def get_real_time_air_quality( *,
     return await air_quality_service.get_real_time_air_quality(session,station)
 
 # Get real-time analysis air quality (all stations or specific station)
-@app.get("/api/real-time-analysis-aq/")
+@app.get("/api/real-time-analysis-air-quality/")
 async def get_real_time_air_quality( *,
-    session: Session = Depends(get_session),
-    station: Optional[str] = Query(None, description="Filter by station name (optional)")
+    session: Session = Depends(get_session)
 ):
     return await air_quality_service.get_real_time_aq_analysis(session)
 
