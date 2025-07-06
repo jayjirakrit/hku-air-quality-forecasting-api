@@ -18,7 +18,7 @@ from typing import Optional, List, Dict, Any
 # Load environment variables from .env file
 load_dotenv()
 
-origins = json.loads(os.getenv("ALLOWED_ORIGINS", "[]"))
+origins = json.loads(os.getenv("ALLOWED_ORIGINS", '["http://localhost:3000","https://hku-capstone-project-458309.df.r.appspot.com"]'))
 station_service = StationService()
 air_quality_service = AirQualityService()
 in_memory_cache = InMemoryCache(default_ttl_seconds=timedelta(days=1).total_seconds())
@@ -105,11 +105,18 @@ async def get_real_time_air_quality( *,
 ):
     return await air_quality_service.get_real_time_air_quality(session,station)
 
+# Get real-time analysis air quality (all stations or specific station)
+@app.get("/api/real-time-analysis-air-quality/")
+async def get_real_time_air_quality( *,
+    session: Session = Depends(get_session),
+    station: Optional[str] = Query(None, description="Filter by station name (optional)")
+):
+    return await air_quality_service.get_real_time_aq_analysis(session)
+
 @app.post("/api/forecast-air-quality/", response_model= List[Dict[str, Any]])
 async def get_air_quality_forecast(*,
     session: Session = Depends(get_session)
 ):
-    print("Start AQ Forecasting")
     cached_data = in_memory_cache.get("real-time-air-quality")
     if cached_data:
         return cached_data
@@ -118,8 +125,3 @@ async def get_air_quality_forecast(*,
     response_data = await air_quality_service.get_air_quality_forecast(session)
     in_memory_cache.set("real-time-air-quality", response_data) # Cache for default         
     return response_data
-
-# Get recommendations based on air quality
-@app.post("/api/recommendations/", response_model=List[Recommendation])
-def get_recommendation(air_quality: AirQualityData = None):
-    return air_quality_service.get_recommendation()

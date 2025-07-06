@@ -8,11 +8,20 @@ from dotenv import load_dotenv
 import os
 from typing import Optional, List, Dict, Any
 from lib.forecasting_model import forecast_pm25
+import asyncio
+from collections import defaultdict
 
 # Load environment variables from .env file
 load_dotenv()
 station_service = StationService()
-
+gov_data_mapping = {
+    "Central and Western": "CENTRAL",
+    "Kowloon City": "KWUN TONG",
+    "Kwun Tong": "KWUN TONG",
+    "Sai Kung": "KWUN TONG",
+    "Wan Chai": "CENTRAL",
+    "Yau Tsim Mong": "CAUSEWAY BAY",
+}
 
 class AirQualityService:
     
@@ -22,14 +31,13 @@ class AirQualityService:
     
     # Get real-time air quality (all stations or specific station)
     async def get_real_time_air_quality(self, session, station_filter: Optional[str] = None) -> List[Dict[str, Any]]:
-        URL = os.getenv("AQHI_API_URL")
-        if not URL:
+        AQHI_URL = os.getenv("AQHI_API_URL")        
+        if not AQHI_URL:
             raise HTTPException(status_code=500, detail="AQHI_API_URL environment variable is not set.")
         try:
             all_stations = await station_service.get_stations(session)
-            
             async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(URL)
+                response = await client.get(AQHI_URL)
                 response.raise_for_status() # Raise an exception for HTTP errors (4xx or 5xx)
                 root = ET.fromstring(response.text)
                 items = []
@@ -89,7 +97,6 @@ class AirQualityService:
                             'report_datetime': pub_date
                         })
                 return items
-        
         except httpx.HTTPStatusError as e:
             raise HTTPException(status_code=e.response.status_code, detail=f"External API HTTP error: {e.response.text}") from e
         except httpx.RequestError as e:
@@ -99,15 +106,86 @@ class AirQualityService:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
     
-    def get_recommendation(self, session, air_quality: AirQualityData = None):
-        mock_recommendations = [
-        { "image": "", "recommend": "Sensitive groups should wear a mask outdoors" },
-        { "image": "", "recommend": "Sensitive groups should reduce outdoor exercise" },
-        { "image": "", "recommend": "Close your windows to avoid dirty outdoor air" },
-        ]
-        # # Example logic: Recommend masks if AQI > 50
-        # if air_quality.aqi > 50:
-        #     return mock_recommendations
-        # else:
-        #     return [mock_recommendations[1]]  # Only return "close windows"
-        return mock_recommendations
+    async def get_real_time_air_quality_particle(self, session):
+        LAMPPORT_API_URL = os.getenv("LAMPPORT_API_URL") # Added a default for testing
+        aggregated_data = defaultdict(lambda: {'pm25_sum': 0, 'no2_sum': 0, 'no_sum': 0, 'count': 0})
+            
+        if not LAMPPORT_API_URL:
+            raise HTTPException(status_code=500, detail="LAMPPORT_API_URL environment variable is not set.")
+            
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(LAMPPORT_API_URL)
+                response.raise_for_status() # Raise an exception for 4xx/5xx responses
+                response_data = response.json().get('data', [])
+                    
+                if not isinstance(response_data, list):
+                    raise HTTPException(status_code=500, detail="Unexpected data format from external Lamppost API. Expected a list in 'data'.")
+
+                for item_data in response_data:
+                    lamppost_info = item_data.get('lamppost', {})
+                    station_name = lamppost_info.get('district_en') 
+
+                    # Ensure station_name is valid for grouping
+                    if not station_name:
+                        print(f"Warning: Item missing 'district_en' in lamppost info: {item_data}")
+                        continue
+
+                    pm2_5 = item_data.get('pm25')
+                    no2 = item_data.get('no2')
+                    no = item_data.get('no')
+
+                    # Aggregate sums and count only if values are present (not None)
+                    if pm2_5 is not None:
+                        aggregated_data[station_name]['pm25_sum'] += pm2_5
+                    if no2 is not None:
+                        aggregated_data[station_name]['no2_sum'] += no2
+                    if no is not None:
+                        aggregated_data[station_name]['no_sum'] += no
+                        
+                    if pm2_5 is not None or no2 is not None or no is not None:
+                        aggregated_data[station_name]['count'] += 1
+
+            aggregated_results = []
+            for station, data in aggregated_data.items():
+                if data['count'] > 0:
+                    aggregated_results.append({
+                        'station': station,
+                        'pm2_5': round(data['pm25_sum'] / data['count']) if data['pm25_sum'] is not None else None,
+                        'no2': round(data['no2_sum'] / data['count']) if data['no2_sum'] is not None else None,
+                        'no': round(data['no_sum'] / data['count']) if data['no_sum'] is not None else None,
+                    })
+            return aggregated_results
+
+        except httpx.HTTPStatusError as e:
+            # This catches 4xx/5xx responses due to response.raise_for_status()
+            raise HTTPException(status_code=e.response.status_code, detail=f"External API HTTP error: {e.response.text}") from e
+        except httpx.RequestError as e:
+            raise HTTPException(status_code=503, detail=f"Network error accessing external API: {str(e)}") from e
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+    
+    async def get_real_time_aq_analysis(self, session):
+        aqhi_response, aq_data_response = await asyncio.gather(
+            self.get_real_time_air_quality(session),
+            self.get_real_time_air_quality_particle(session)
+        )
+        consolidate_response = []
+        aqhi_lookup = {item.get('station').upper(): item for item in aqhi_response}
+        for aq_data_item in aq_data_response:
+            mapping_station = gov_data_mapping.get(aq_data_item.get('station'),'not found')
+            aqhi_item = aqhi_lookup.get(mapping_station)
+            if aqhi_item:
+                consolidate_response.append({
+                    'id': aqhi_item.get('id'),
+                    'station': aq_data_item.get('station'),
+                    'latitude': aqhi_item.get('latitude'),
+                    'longitude': aqhi_item.get('longitude'),
+                    'aqi': aqhi_item.get('aqi'),
+                    'report_datetime': aqhi_item.get('report_datetime'),
+                    'pm2_5': round(aq_data_item.get('pm2_5')),
+                    'no': round(aq_data_item.get('no')),
+                    'no2': round(aq_data_item.get('no2')),
+                })
+        return consolidate_response    
