@@ -107,7 +107,7 @@ class AirQualityService:
             raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
     
     async def get_real_time_air_quality_particle(self, session):
-        LAMPPORT_API_URL = os.getenv("LAMPPORT_API_URL") # Added a default for testing
+        LAMPPORT_API_URL = os.getenv("LAMPPORT_API_URL","https://paqs.epd-asmg.gov.hk/data/data.json") # Added a default for testing
         aggregated_data = defaultdict(lambda: {'pm25_sum': 0, 'no2_sum': 0, 'no_sum': 0, 'count': 0})
             
         if not LAMPPORT_API_URL:
