@@ -23,3 +23,6 @@ source ./.venv/bin/activate
 pip install -r requirements.txt
 uvicorn main:app --reload # Window
 gunicorn -w 2 -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:8000 # Linux
+```
+### Local Environment
+- http://localhost:8000
