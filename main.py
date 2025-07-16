@@ -1,7 +1,5 @@
 from fastapi import FastAPI
-from datetime import datetime
-from fastapi import FastAPI, Query, HTTPException, Depends
-from model import AirQualityData, StationModel, Recommendation  # Import from the model package
+from fastapi import FastAPI, Query, Depends
 from typing import List,Optional
 from fastapi.middleware.cors import CORSMiddleware
 from service.station_service import StationService
@@ -78,16 +76,21 @@ def get_session_mock():
     
 # ------ Database Setup ------ #
 
-# @app.on_event("startup")
-# async def on_startup():
-#     try:
-#         with MockSession() as session:
-#             print("Startup: Fetching initial air quality data...")
-#             response_data = await air_quality_service.get_air_quality_forecast(session)
-#             in_memory_cache.set("real-time-air-quality", response_data)
-#             print("Startup: Cache preloaded successfully!")
-#     except Exception as e:
-#         print(f"Startup ERROR: Failed to preload cache: {e}")
+@app.on_event("startup")
+async def on_startup():
+    # try:
+    #     create_db_and_tables()
+    # except Exception as e:
+    #     print(f"Database Connection ERROR: Failed to connect Database: {e}")
+    
+    try:
+        with MockSession() as session:
+            print("Startup: Fetching initial air quality data...")
+            response_data = await air_quality_service.get_air_quality_forecast(session)
+            in_memory_cache.set("real-time-air-quality", response_data)
+            print("Startup: Cache preloaded successfully!")
+    except Exception as e:
+        print(f"Startup ERROR: Failed to preload cache: {e}")
 
 # ----- API Endpoints ----- #
 
@@ -119,7 +122,7 @@ async def get_air_quality_forecast(*,
     cached_data = in_memory_cache.get("real-time-air-quality")
     if cached_data:
         return cached_data
-    
+
     # If not in cache or expired, fetch from source and cache it
     response_data = await air_quality_service.get_air_quality_forecast(session)
     in_memory_cache.set("real-time-air-quality", response_data) # Cache for default         

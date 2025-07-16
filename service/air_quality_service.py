@@ -1,6 +1,4 @@
-from datetime import datetime
 from fastapi import HTTPException
-from model import AirQualityData
 import httpx
 import xml.etree.ElementTree as ET
 from service.station_service import StationService 
@@ -77,7 +75,7 @@ class AirQualityService:
 
                     if aqhi_str is None or risk is None:
                         print(f"Warning: Could not parse AQHI/Risk from description '{description_text}' for district '{district_name}'. Skipping this item.")
-                        continue # Skip to the next item
+                        continue
 
                     station_data = stations_by_lower_name.get(district_name.lower())                    
                     if (station_filter is None or station_filter.lower() == district_name.lower()) and station_data is not None:
@@ -85,7 +83,7 @@ class AirQualityService:
                             aqi_value = int(aqhi_str)
                         except ValueError:
                             print(f"Warning: Could not convert AQHI '{aqhi_str}' to int for district '{district_name}'. Skipping this item.")
-                            continue # Skip this item if AQHI is not a valid integer
+                            continue
 
                         items.append({
                             'id': station_data.id,
@@ -116,7 +114,7 @@ class AirQualityService:
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.get(LAMPPORT_API_URL)
-                response.raise_for_status() # Raise an exception for 4xx/5xx responses
+                response.raise_for_status()
                 response_data = response.json().get('data', [])
                     
                 if not isinstance(response_data, list):
@@ -158,7 +156,6 @@ class AirQualityService:
             return aggregated_results
 
         except httpx.HTTPStatusError as e:
-            # This catches 4xx/5xx responses due to response.raise_for_status()
             raise HTTPException(status_code=e.response.status_code, detail=f"External API HTTP error: {e.response.text}") from e
         except httpx.RequestError as e:
             raise HTTPException(status_code=503, detail=f"Network error accessing external API: {str(e)}") from e
