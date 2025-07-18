@@ -143,7 +143,7 @@ async def get_air_quality_forecast(*,
     return response_data
 
 # Scheduler download past 48 hour image data from GCS
-@scheduler.scheduled_job('cron', hour=0, minute=1)
+@scheduler.scheduled_job('cron', hour=0, minute=10)
 async def batch_download_image_data():    
     # Download image data from GCS
     bucket_name = os.getenv("GBS_BUCKET_NAME")
