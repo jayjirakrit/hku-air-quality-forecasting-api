@@ -19,10 +19,13 @@ HKU Air Quality Forecasting API
 ### Steps
 ```bash
 cd hku-air-quality-forecasting-api
+python3.12 -m venv .venv
 source ./.venv/bin/activate
 pip install -r requirements.txt
 uvicorn main:app --reload # Window
-gunicorn -w 2 -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:8000 # Linux
+gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:8000 # Linux
 ```
+If run in local you to commend out create_db_and_tables() in main file and some service might not working
+
 ### Local Environment
 - http://localhost:8000

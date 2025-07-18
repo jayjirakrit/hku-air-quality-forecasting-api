@@ -29,10 +29,10 @@ scheduler = AsyncIOScheduler(timezone=get_localzone())
 async def lifespan(app: FastAPI):
     scheduler.start()
     
-    # try:
-    #     create_db_and_tables()
-    # except Exception as e:
-    #     print(f"Database Connection ERROR: Failed to connect Database: {e}")
+    try:
+        create_db_and_tables()
+    except Exception as e:
+        print(f"Database Connection ERROR: Failed to connect Database: {e}")
     
     try:
         await clear_forecasting_cache()
