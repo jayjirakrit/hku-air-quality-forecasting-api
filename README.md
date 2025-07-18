@@ -29,3 +29,18 @@ If run in local you to commend out create_db_and_tables() in main file and some 
 
 ### Local Environment
 - http://localhost:8000
+
+## API
+
+# HKU Air Quality Forecasting API Documentation
+
+This document outlines the available endpoints provided by the HKU Air Quality Forecasting (AQF) API, including their paths and descriptions of their functionality.
+
+## Endpoints
+
+| **Path**                               | **Function**                                                                 |
+|----------------------------------------|------------------------------------------------------------------------------|
+|  `GET - http://localhost:8000/api/stations`                        | Get all stations information including station name, latitude, and longitude. |
+| `POST - http://localhost:8000/api/forecast-air-quality/`          | Get predicted air quality for the next 24 hours across all stations.         |
+| `GET - http://localhost:8000/api/real-time-air-quality/`         | Get current real-time air quality data, such as AQHI.                        |
+| `GET - http://localhost:8000/api/real-time-analysis-air-quality/`| Get real-time air quality data for analysis purposes (e.g., AQHI, PM2.5, NO, NO₂, etc.). |
