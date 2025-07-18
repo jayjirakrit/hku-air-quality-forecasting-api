@@ -36,7 +36,7 @@ async def lifespan(app: FastAPI):
     
     try:
         await clear_forecasting_cache()
-        await batch_generate_input_image_data_test_logic()
+        await batch_download_image_data()
     except Exception as e:
         print(f"Machine Learning Preparing Failed: Failed to load ml image data: {e}")
     
@@ -144,7 +144,7 @@ async def get_air_quality_forecast(*,
 
 # Scheduler download past 48 hour image data from GCS
 @scheduler.scheduled_job('cron', hour=0, minute=1)
-async def batch_generate_input_image_data_test_logic():    
+async def batch_download_image_data():    
     # Download image data from GCS
     bucket_name = os.getenv("GBS_BUCKET_NAME")
     source_file = os.getenv("GBS_SOURCE_FILE")
