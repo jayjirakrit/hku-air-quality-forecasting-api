@@ -5,7 +5,6 @@ from service.station_service import StationService
 from dotenv import load_dotenv
 import os
 from typing import Optional, List, Dict, Any
-from lib.forecasting_model import forecast_pm25
 from lib.prediction import forecast_aq
 
 import asyncio
@@ -24,11 +23,7 @@ gov_data_mapping = {
 }
 
 class AirQualityService:
-    
-    # Not used - Get forecasting air quality (all stations)
-    async def get_air_quality_forecast(self, session):            
-        return forecast_pm25()
-    
+        
     # Get forecasting air quality (all stations) version2
     async def get_air_quality_forecast_v2(self, session):            
         return forecast_aq()
