@@ -13,8 +13,8 @@ from datetime import timedelta
 from typing import Optional, List, Dict, Any
 from contextlib import asynccontextmanager
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from tzlocal import get_localzone
 from lib.google_cloud import download_blob_to_file
+import pytz
 
 # Load environment variables from .env file
 load_dotenv()
@@ -24,7 +24,10 @@ station_service = StationService()
 air_quality_service = AirQualityService()
 in_memory_cache = InMemoryCache(default_ttl_seconds=timedelta(days=1).total_seconds())
 
-scheduler = AsyncIOScheduler(timezone=get_localzone())
+# Define Hong Kong timezone
+hong_kong_tz = pytz.timezone("Asia/Hong_Kong")
+
+scheduler = AsyncIOScheduler(timezone=hong_kong_tz)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     scheduler.start()
