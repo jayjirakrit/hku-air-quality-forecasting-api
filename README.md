@@ -15,11 +15,32 @@ HKU Air Quality Forecasting API
 
 ### Prerequisites
 - Python 3.12
+- pip
 
 ### Steps
+
+## Create .env file in root folder
+
+```bash
+POSTGRES_USER=your_user
+POSTGRES_PASSWORD=your_password
+POSTGRES_SERVER=your_server
+POSTGRES_PORT=5432
+POSTGRES_DB=your_db
+ALLOWED_ORIGINS=['allow_origin']
+ALLOWED_ORIGINS='["http://localhost:3000","https://hku-capstone-project-458309.df.r.appspot.com"]'
+LAMPPORT_API_URL='https://paqs.epd-asmg.gov.hk/data/data.json'
+GBS_BUCKET_NAME=hku-capstone-project-458309.appspot.com
+GBS_SOURCE_FILE=data/past48h_tensor.npy
+IMAGE_DESTINATION_PATH=past48h_tensor.npy
+IMAGE_MOVE_PATH="./lib"
+```
+
+## Run Commands
+
 ```bash
 cd hku-air-quality-forecasting-api
-python3.12 -m venv .venv
+python3.12 -m venv .venv # Or create virtual environment
 source ./.venv/bin/activate
 pip install -r requirements.txt
 uvicorn main:app --reload # Window
